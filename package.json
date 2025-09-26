@@ -1,0 +1,28 @@
+{
+  "name": "cite-number",
+  "version": "1.0.0",
+  "description": "论文引用查询器 - 快速查询学术论文的引用次数",
+  "main": "api/index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Building static files...'",
+    "start": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "academic",
+    "papers",
+    "citations",
+    "semantic-scholar",
+    "research"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": ">=14.x"
+  }
+}
