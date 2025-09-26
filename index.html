@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文引用查询器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="lang-switcher">
+            <button onclick="setLanguage('zh')" class="lang-btn" data-lang="zh">中文</button>
+            <button onclick="setLanguage('en')" class="lang-btn" data-lang="en">English</button>
+        </div>
+        <header>
+            <h1>📚 论文引用查询器</h1>
+            <p class="subtitle">快速查询学术论文的引用次数</p>
+        </header>
+
+        <div class="search-section">
+            <div class="search-tabs">
+                <button class="tab-btn active" onclick="switchTab('single')">单个查询</button>
+                <button class="tab-btn" onclick="switchTab('batch')">批量查询</button>
+            </div>
+
+            <div id="singleSearchTab" class="tab-content active">
+                <div class="search-container">
+                    <div class="input-wrapper">
+                        <input type="text" id="searchInput" placeholder="请输入论文标题或关键词..." autocomplete="off" />
+                        <div id="searchSuggestions" class="search-suggestions hidden"></div>
+                    </div>
+                    <button id="searchBtn" onclick="searchPapers()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        搜索
+                    </button>
+                </div>
+            </div>
+
+            <div id="batchSearchTab" class="tab-content">
+                <div class="batch-container">
+                    <textarea id="batchInput" placeholder="请输入多个论文标题，每行一个...&#10;&#10;例如：&#10;Attention Is All You Need&#10;BERT: Pre-training of Deep Bidirectional Transformers&#10;GPT-3: Language Models are Few-Shot Learners" rows="6"></textarea>
+                    <div class="batch-controls">
+                        <button onclick="performBatchSearch()" class="batch-search-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11H3m6 0V5m0 6l-3-3m3 3l3-3m6 1a4 4 0 11-8 0 4 4 0 018 0zm6 8H15m6 0v-6m0 6l-3 3m3-3l3 3"/>
+                            </svg>
+                            批量查询
+                        </button>
+                        <span class="batch-count">0 篇论文</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tips">
+                <p>💡 提示：输入完整的论文标题可获得更准确的结果 | 支持批量查询多篇论文</p>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <div class="history-header">
+                <h3>📝 搜索历史</h3>
+                <button class="clear-history-btn" onclick="clearHistory()">清除历史</button>
+            </div>
+            <div id="historyList" class="history-list"></div>
+        </div>
+
+        <div id="loadingSpinner" class="loading-spinner hidden">
+            <div class="spinner"></div>
+            <p>正在搜索中...</p>
+        </div>
+
+        <div id="resultsSection" class="results-section hidden">
+            <h2>搜索结果</h2>
+            <div id="resultsContainer"></div>
+        </div>
+
+        <div id="errorMessage" class="error-message hidden">
+            <p>搜索出错，请稍后重试</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>数据来源：Semantic Scholar | 仅供学术参考使用</p>
+    </footer>
+
+    <script src="i18n.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
