@@ -759,6 +759,30 @@ header h1 {
     transform: translateY(-0.5px);
 }
 
+.copy-asa-btn {
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    color: hsl(var(--muted-foreground));
+    font-size: clamp(0.8125rem, 1.75vw, 0.9rem);
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-in-out);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.copy-asa-btn:hover {
+    background: hsl(var(--accent) / 0.1);
+    color: hsl(var(--accent));
+    border-color: hsl(var(--accent) / 0.3);
+    transform: translateY(-0.5px);
+}
+
 .error-message {
     background: rgba(254, 226, 226, 0.8);
     border: 1px solid #fca5a5;

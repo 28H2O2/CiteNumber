@@ -345,6 +345,65 @@ function displayBatchResults(papers, queries) {
     });
 }
 
+function generateASACitation(paper) {
+    if (!paper.authors || paper.authors.length === 0) {
+        return '';
+    }
+
+    let authorsFormatted = '';
+
+    paper.authors.forEach((author, index) => {
+        const name = author.name || '';
+        const parts = name.trim().split(' ');
+
+        if (parts.length === 0) return;
+
+        if (index === 0) {
+            const lastName = parts[parts.length - 1];
+            const firstName = parts.slice(0, -1).join(' ');
+            authorsFormatted += lastName;
+            if (firstName) {
+                authorsFormatted += ', ' + firstName;
+            }
+        } else {
+            if (index === paper.authors.length - 1) {
+                authorsFormatted += ' and ';
+            } else {
+                authorsFormatted += ', ';
+            }
+            authorsFormatted += name;
+        }
+    });
+
+    const year = paper.year || 'n.d.';
+    const title = paper.title || 'Untitled';
+    const venue = paper.venue || 'Journal Name';
+    const doi = paper.externalIds?.DOI ? ` doi:${paper.externalIds.DOI}.` : '';
+
+    return `${authorsFormatted}. ${year}. "${title}." ${venue}.${doi}`;
+}
+
+function copyToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = button.textContent;
+        button.textContent = currentLang === 'zh' ? '✓ 已复制' : '✓ Copied';
+        button.style.backgroundColor = '#10b981';
+        button.style.color = 'white';
+
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.backgroundColor = '';
+            button.style.color = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('复制失败:', err);
+        button.textContent = currentLang === 'zh' ? '复制失败' : 'Copy failed';
+        setTimeout(() => {
+            button.textContent = currentLang === 'zh' ? '复制ASA格式' : 'Copy ASA';
+        }, 2000);
+    });
+}
+
 function createPaperCard(paper) {
     const card = document.createElement('div');
     card.className = 'paper-card';
@@ -366,6 +425,8 @@ function createPaperCard(paper) {
         doi = paper.externalIds.DOI;
     }
 
+    const asaCitation = generateASACitation(paper);
+
     card.innerHTML = `
         <div class="paper-title">${escapeHtml(title)}</div>
         <div class="paper-authors">👤 ${escapeHtml(authors)}</div>
@@ -379,6 +440,9 @@ function createPaperCard(paper) {
             ${doi ? `<a href="https://doi.org/${doi}" target="_blank" class="paper-link">
                 DOI →
             </a>` : ''}
+            <button class="copy-asa-btn" onclick="copyToClipboard('${escapeHtml(asaCitation).replace(/'/g, "\\'")}', this)">
+                ${currentLang === 'zh' ? '复制ASA格式' : 'Copy ASA'}
+            </button>
         </div>
     `;
 
