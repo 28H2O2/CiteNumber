@@ -346,8 +346,9 @@ function displayBatchResults(papers, queries) {
 }
 
 function generateASACitation(paper) {
-    // ASA 格式规范（期刊文章）：
-    // {Author(s)}. {Year}. "{Article Title}." *{Journal Title}* {Volume}({Issue}):{Page Range}. doi:{DOI}.
+    // ASA 格式规范：
+    // 期刊文章：{Author(s)}. {Year}. "{Article Title}." *{Journal Title}* {Volume}({Issue}):{Page Range}.
+    // 书籍：{Author(s)}. {Year}. *{Book Title}*. {City}: {Publisher}.
     
     if (!paper.authors || paper.authors.length === 0) {
         return 'Unknown Author. n.d. "' + (paper.title || 'Untitled') + '."';
@@ -383,28 +384,29 @@ function generateASACitation(paper) {
     // 年份
     const year = paper.year || 'n.d.';
     
-    // 文章标题（用引号，句号在引号内）
+    // 标题
     const title = paper.title || 'Untitled';
     
-    // 期刊名（斜体标记）
-    const venue = paper.venue || 'Unknown Journal';
+    // 出版信息
+    const venue = paper.venue || '';
     
-    // 卷号、期号、页码（Semantic Scholar API 通常不提供这些详细字段）
-    // 如果以后API提供了这些字段，可以添加：
-    // const volumeInfo = paper.volume ? `${paper.volume}${paper.issue ? '(' + paper.issue + ')' : ''}${paper.pages ? ':' + paper.pages : ''}` : '';
+    // 判断是书籍还是期刊文章
+    // Semantic Scholar 的 venue 字段通常包含期刊名或会议名
+    // 如果 venue 为空或包含 "Press", "Publisher" 等关键词，可能是书籍
+    const isBook = !venue || venue.includes('Press') || venue.includes('Publisher') || venue.includes('Books');
     
-    // DOI
-    const doi = paper.externalIds?.DOI ? ` doi:${paper.externalIds.DOI}` : '';
+    let citation = '';
     
-    // 组装完整引文
-    // 期刊名用斜体（*斜体*表示）
-    let citation = `${authorsFormatted}. ${year}. "${title}" *${venue}*`;
-    
-    // 如果有DOI，添加DOI并以句号结尾
-    if (doi) {
-        citation += `.${doi}.`;
+    if (isBook) {
+        // 书籍格式：姓, 名. 年份. *书名*. 出版地: 出版社.
+        // 注意：Semantic Scholar 通常不提供出版地和出版社信息
+        citation = `${authorsFormatted}. ${year}.${title}.`;
+        if (venue) {
+            citation = `${authorsFormatted}. ${year}.${title}.${venue}.`;
+        }
     } else {
-        citation += '.';
+        // 期刊文章格式：姓, 名. 年份. "文章标题." *期刊名*.
+        citation = `${authorsFormatted}. ${year}. "${title}" *${venue}*.`;
     }
     
     return citation;
