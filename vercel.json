@@ -7,11 +7,6 @@
       "destination": "/public/$1"
     }
   ],
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs@18"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
