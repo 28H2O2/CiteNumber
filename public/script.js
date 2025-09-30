@@ -151,8 +151,134 @@ document.getElementById('batchInput').addEventListener('input', function(e) {
     document.querySelector('.batch-count').textContent = `${lines.length} ${t('paperCount')}`;
 });
 
+// ========== API 查询函数 ==========
+
+// Semantic Scholar API
+async function searchSemanticScholar(searchTerm) {
+    const encodedQuery = encodeURIComponent(searchTerm);
+    const apiUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodedQuery}&fields=title,authors,year,citationCount,venue,paperId,externalIds&limit=10`;
+    
+    const response = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!response.ok) throw new Error('Semantic Scholar API request failed');
+    
+    const data = await response.json();
+    return data.data || [];
+}
+
+// CrossRef API
+async function searchCrossRef(searchTerm) {
+    const encodedQuery = encodeURIComponent(searchTerm);
+    const apiUrl = `https://api.crossref.org/works?query.title=${encodedQuery}&rows=10`;
+    
+    const response = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!response.ok) throw new Error('CrossRef API request failed');
+    
+    const data = await response.json();
+    
+    // 转换 CrossRef 数据格式为统一格式
+    return (data.message.items || []).map(item => ({
+        title: item.title?.[0] || 'Unknown Title',
+        authors: (item.author || []).map(a => ({
+            name: `${a.given || ''} ${a.family || ''}`.trim()
+        })),
+        year: item.published?.['date-parts']?.[0]?.[0] || item.created?.['date-parts']?.[0]?.[0] || null,
+        citationCount: item['is-referenced-by-count'] || 0,
+        venue: item['container-title']?.[0] || item.publisher || '',
+        paperId: item.DOI || '',
+        externalIds: { DOI: item.DOI }
+    }));
+}
+
+// OpenAlex API
+async function searchOpenAlex(searchTerm) {
+    const encodedQuery = encodeURIComponent(searchTerm);
+    const apiUrl = `https://api.openalex.org/works?search=${encodedQuery}&per-page=10`;
+    
+    const response = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!response.ok) throw new Error('OpenAlex API request failed');
+    
+    const data = await response.json();
+    
+    // 转换 OpenAlex 数据格式为统一格式
+    return (data.results || []).map(item => ({
+        title: item.title || 'Unknown Title',
+        authors: (item.authorships || []).map(a => ({
+            name: a.author?.display_name || 'Unknown'
+        })),
+        year: item.publication_year || null,
+        citationCount: item.cited_by_count || 0,
+        venue: item.primary_location?.source?.display_name || 
+               item.host_venue?.display_name || '',
+        paperId: item.id || '',
+        externalIds: { DOI: item.doi?.replace('https://doi.org/', '') }
+    }));
+}
+
+// 统一的搜索函数
+async function searchWithAPI(searchTerm, apiType) {
+    switch(apiType) {
+        case 'semanticscholar':
+            return await searchSemanticScholar(searchTerm);
+        case 'crossref':
+            return await searchCrossRef(searchTerm);
+        case 'openalex':
+            return await searchOpenAlex(searchTerm);
+        default:
+            return await searchSemanticScholar(searchTerm);
+    }
+}
+
+// 显示API切换建议
+function showAPISuggestion(currentAPI, searchTerm) {
+    const resultsContainer = document.getElementById('resultsContainer');
+    const otherAPIs = ['semanticscholar', 'crossref', 'openalex'].filter(api => api !== currentAPI);
+    
+    const apiNames = {
+        'semanticscholar': 'Semantic Scholar',
+        'crossref': 'CrossRef',
+        'openalex': 'OpenAlex'
+    };
+    
+    const suggestionHTML = `
+        <div class="api-suggestion animate-apple-scale-in">
+            <p style="font-size: 1rem; font-weight: 600;">
+                😕 当前数据源未找到结果
+            </p>
+            <p style="font-size: 0.9rem; color: hsl(var(--muted-foreground));">
+                尝试切换到其他数据源查询：
+            </p>
+            <div class="api-suggestion-buttons">
+                ${otherAPIs.map(api => `
+                    <button class="api-switch-btn" onclick="switchAPIAndSearch('${api}', '${escapeHtml(searchTerm).replace(/'/g, "\\'")}')">
+                        尝试 ${apiNames[api]}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = suggestionHTML;
+}
+
+// 切换API并重新搜索
+function switchAPIAndSearch(apiType, searchTerm) {
+    document.getElementById('apiSelect').value = apiType;
+    document.getElementById('searchInput').value = searchTerm;
+    searchPapers();
+}
+
 async function searchPapers() {
     const searchTerm = document.getElementById('searchInput').value.trim();
+    const apiType = document.getElementById('apiSelect').value;
 
     if (!searchTerm) {
         alert(t('enterTitle'));
@@ -173,33 +299,17 @@ async function searchPapers() {
     errorMessage.classList.add('hidden');
 
     try {
-        const encodedQuery = encodeURIComponent(searchTerm);
-        const apiUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodedQuery}&fields=title,authors,year,citationCount,venue,paperId,externalIds&limit=10`;
-
-        const response = await fetch(apiUrl, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('API request failed');
-        }
-
-        const data = await response.json();
+        // 使用选定的API进行搜索
+        const results = await searchWithAPI(searchTerm, apiType);
 
         loadingSpinner.classList.add('hidden');
 
-        if (data.data && data.data.length > 0) {
-            displayResults(data.data, searchTerm);
+        if (results && results.length > 0) {
+            displayResults(results, searchTerm);
             resultsSection.classList.remove('hidden');
         } else {
-            resultsContainer.innerHTML = `
-                <div class="no-results">
-                    <p>${t('noResults')}</p>
-                    <p style="font-size: 0.9rem; color: #888;">${t('noResultsHint')}</p>
-                </div>
-            `;
+            // 显示API切换建议
+            showAPISuggestion(apiType, searchTerm);
             resultsSection.classList.remove('hidden');
         }
 
@@ -216,6 +326,7 @@ async function searchPapers() {
 
 async function performBatchSearch() {
     const batchInput = document.getElementById('batchInput').value.trim();
+    const apiType = document.getElementById('apiSelect').value;
 
     if (!batchInput) {
         alert(t('enterBatchTitle'));
@@ -255,23 +366,14 @@ async function performBatchSearch() {
 
     for (const title of titles) {
         try {
-            const encodedQuery = encodeURIComponent(title.trim());
-            const apiUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodedQuery}&fields=title,authors,year,citationCount,venue,paperId,externalIds&limit=1`;
-
-            const response = await fetch(apiUrl, {
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.data && data.data.length > 0) {
-                    allResults.push({
-                        ...data.data[0],
-                        queryTitle: title.trim()
-                    });
-                }
+            // 使用选定的API进行搜索，只取第一个结果
+            const results = await searchWithAPI(title.trim(), apiType);
+            
+            if (results && results.length > 0) {
+                allResults.push({
+                    ...results[0],
+                    queryTitle: title.trim()
+                });
             }
 
             completed++;
@@ -345,71 +447,54 @@ function displayBatchResults(papers, queries) {
     });
 }
 
-function generateASACitation(paper) {
-    // ASA 格式规范：
-    // 期刊文章：{Author(s)}. {Year}. "{Article Title}." *{Journal Title}* {Volume}({Issue}):{Page Range}.
-    // 书籍：{Author(s)}. {Year}. *{Book Title}*. {City}: {Publisher}.
-    
-    if (!paper.authors || paper.authors.length === 0) {
-        return 'Unknown Author. n.d. "' + (paper.title || 'Untitled') + '."';
-    }
+function formatAuthors(authors) {
+    if (!authors || authors.length === 0) return "Unknown Author";
 
-    // 格式化作者名
-    let authorsFormatted = '';
-    paper.authors.forEach((author, index) => {
-        const name = author.name || '';
-        const parts = name.trim().split(' ');
-        if (parts.length === 0) return;
+    return authors.map((author, i) => {
+        const parts = author.name.trim().split(" ");
+        const lastName = parts.pop();
+        const initials = parts.map(p => p[0].toUpperCase() + ".").join("");
 
-        if (index === 0) {
-            // 第一作者：姓, 名（LastName, FirstName MiddleInitial）
-            const lastName = parts[parts.length - 1];
-            const firstName = parts.slice(0, -1).join(' ');
-            authorsFormatted += lastName;
-            if (firstName) {
-                authorsFormatted += ', ' + firstName;
-            }
+        if (i === 0) {
+            // 第一作者：姓, 名缩写
+            return `${lastName}, ${initials}`;
         } else {
-            // 后续作者：名 姓（FirstName MiddleInitial LastName）
-            if (index === paper.authors.length - 1) {
-                // 最后一位作者前用 and
-                authorsFormatted += ' and ';
-            } else {
-                authorsFormatted += ', ';
-            }
-            authorsFormatted += name;
+            // 其他作者：名缩写 姓
+            return `${initials}${lastName}`;
         }
-    });
+    }).join(", ");
+}
 
-    // 年份
-    const year = paper.year || 'n.d.';
-    
-    // 标题
-    const title = paper.title || 'Untitled';
-    
-    // 出版信息
-    const venue = paper.venue || '';
-    
-    // 判断是书籍还是期刊文章
-    // Semantic Scholar 的 venue 字段通常包含期刊名或会议名
-    // 如果 venue 为空或包含 "Press", "Publisher" 等关键词，可能是书籍
-    const isBook = !venue || venue.includes('Press') || venue.includes('Publisher') || venue.includes('Books');
-    
-    let citation = '';
-    
-    if (isBook) {
-        // 书籍格式：姓, 名. 年份. *书名*. 出版地: 出版社.
-        // 注意：Semantic Scholar 通常不提供出版地和出版社信息
-        citation = `${authorsFormatted}. ${year}.${title}.`;
-        if (venue) {
-            citation = `${authorsFormatted}. ${year}.${title}.${venue}.`;
-        }
+function generateASACitation(paper) {
+    const authorsFormatted = formatAuthors(paper.authors);
+    const year = paper.year || "n.d.";
+    const title = paper.title || "Untitled";
+    const venue = paper.venue || "";
+    const volume = paper.volume ? paper.volume : "";
+    const issue = paper.issue ? `(${paper.issue})` : "";
+    const pages = paper.pages ? `:${paper.pages}` : "";
+
+    let citation = "";
+
+    // 判断类型
+    if (paper.type === "book") {
+        // 书籍 [M]
+        citation = `${authorsFormatted}. ${year}. ${title}[M]. ${paper.city || ""}: ${paper.publisher || ""}.`;
+    } else if (paper.type === "journal") {
+        // 期刊文章 [J]
+        citation = `${authorsFormatted}. ${year}. ${title}[J]. ${venue}, ${volume}${issue}${pages}.`;
+    } else if (paper.type === "conference") {
+        // 会议论文 [C]
+        citation = `${authorsFormatted}. ${year}. ${title}[C]. In ${venue}, ${pages}.`;
+    } else if (paper.type === "chapter") {
+        // 书籍章节 [A]
+        citation = `${authorsFormatted}. ${year}. ${title}[A]. In ${paper.editors || ""}, ${paper.booktitle || ""}[C]. ${paper.city || ""}: ${paper.publisher || ""}.`;
     } else {
-        // 期刊文章格式：姓, 名. 年份. "文章标题." *期刊名*.
-        citation = `${authorsFormatted}. ${year}. "${title}" *${venue}*.`;
+        // fallback
+        citation = `${authorsFormatted}. ${year}. ${title}. ${venue}.`;
     }
-    
-    return citation;
+
+    return citation.replace(/\s+/g, " ").trim();
 }
 
 function copyToClipboard(text, button) {

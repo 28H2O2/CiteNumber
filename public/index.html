@@ -37,6 +37,15 @@
                 <button class="tab-btn active" onclick="switchTab('single')">单个查询</button>
                 <button class="tab-btn" onclick="switchTab('batch')">批量查询</button>
             </div>
+            
+            <div class="api-selector">
+                <label for="apiSelect" class="api-label">数据源：</label>
+                <select id="apiSelect" class="api-select">
+                    <option value="semanticscholar">Semantic Scholar</option>
+                    <option value="crossref">CrossRef</option>
+                    <option value="openalex">OpenAlex</option>
+                </select>
+            </div>
 
             <div id="singleSearchTab" class="tab-content active">
                 <div class="search-container">
